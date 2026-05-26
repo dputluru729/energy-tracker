@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="EnergyFlow — track your daily energy and time." />
+  <meta name="theme-color" content="#07070f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="EnergyFlow" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <title>EnergyFlow</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Animated background orbs -->
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+
+  <!-- Setup / Config Modal -->
+  <div id="setup-modal" class="modal" style="display:none">
+    <div class="glass-card modal-content">
+      <h2 class="modal-title">Cloud Setup</h2>
+      <p class="modal-sub">Sync your data across devices using a private GitHub Gist.</p>
+      
+      <div class="field-label">GitHub Personal Access Token</div>
+      <input type="password" id="gh-token" class="modal-input" placeholder="ghp_xxxxxxxxxxxx" />
+      <a href="https://github.com/settings/tokens?type=beta" target="_blank" class="modal-hint">Create a token with 'Gists' access ↗</a>
+
+      <div class="field-sep"></div>
+
+      <div class="field-label">Gist ID</div>
+      <input type="text" id="gh-gist-id" class="modal-input" placeholder="Paste your Gist ID here" />
+      <p class="modal-hint">Leave blank to create a new one on first save.</p>
+
+      <div class="modal-actions">
+        <button type="button" class="pill" onclick="closeSetup()">Cancel</button>
+        <button type="button" class="pill active" onclick="saveSetup()" style="background:var(--personal); border-color:var(--personal); color:#fff">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+
+    <!-- ── Header ── -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-bolt" aria-hidden="true">⚡</span>
+        <span class="brand-name">EnergyFlow</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="openSetup()" aria-label="Settings">⚙️</button>
+        <span class="header-date" id="header-date"></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ══════════════════════════════
+           TAB 1 — LOG
+      ══════════════════════════════ -->
+      <section class="tab active" id="tab-log" aria-label="Log Activity">
+
+        <div class="page-hero">
+          <h1 class="page-title">Log</h1>
+          <p class="page-sub" id="log-date"></p>
+        </div>
+
+        <form id="log-form" novalidate autocomplete="off">
+
+          <!-- Glass Card 1: Category -->
+          <div class="glass-card form-card">
+            <div class="field-label">Category</div>
+            <div class="pills" id="cat-pills" role="radiogroup" aria-label="Activity category">
+              <button type="button" class="pill" data-value="Work"     id="cat-Work"     aria-pressed="false">💼 Work</button>
+              <button type="button" class="pill" data-value="Study"    id="cat-Study"    aria-pressed="false">📚 Study</button>
+              <button type="button" class="pill" data-value="Personal" id="cat-Personal" aria-pressed="false">🧘 Personal</button>
+              <button type="button" class="pill" data-value="Chilling" id="cat-Chilling" aria-pressed="false">🎮 Chill</button>
+            </div>
+            <input type="hidden" id="cat-val" />
+          </div>
+
+          <!-- Glass Card 2: Time + Energy -->
+          <div class="glass-card form-card">
+            <div class="field-label">Time spent</div>
+            <div class="time-row">
+              <input
+                type="number" id="hours-input" class="time-num"
+                inputmode="numeric" pattern="[0-9]*"
+                min="0" max="23" placeholder="0" aria-label="Hours" autocomplete="off"
+              />
+              <span class="time-unit">h</span>
+              <span class="time-colon">:</span>
+              <input
+                type="number" id="minutes-input" class="time-num"
+                inputmode="numeric" pattern="[0-9]*"
+                min="0" max="59" placeholder="00" aria-label="Minutes" autocomplete="off"
+              />
+              <span class="time-unit">m</span>
+            </div>
+
+            <div class="field-sep"></div>
+
+            <div class="field-label">Energy — how did it feel?</div>
+            <div class="emoji-row" id="energy-row" role="radiogroup" aria-label="Energy level">
+              <button type="button" class="e-btn" data-value="1" id="en-1" aria-pressed="false" aria-label="Drained">😫</button>
+              <button type="button" class="e-btn" data-value="2" id="en-2" aria-pressed="false" aria-label="Tired">😔</button>
+              <button type="button" class="e-btn" data-value="3" id="en-3" aria-pressed="false" aria-label="Okay">😐</button>
+              <button type="button" class="e-btn" data-value="4" id="en-4" aria-pressed="false" aria-label="Good">😊</button>
+              <button type="button" class="e-btn" data-value="5" id="en-5" aria-pressed="false" aria-label="Amazing">🤩</button>
+            </div>
+            <input type="hidden" id="energy-val" />
+          </div>
+
+          <button type="submit" class="save-btn" id="save-btn">
+            <span class="spinner" id="btn-spinner" aria-hidden="true"></span>
+            <span id="btn-icon" aria-hidden="true">☁</span>
+            <span id="btn-text">Save to Cloud</span>
+          </button>
+
+        </form>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </section>
+
+      <!-- ══════════════════════════════
+           TAB 2 — DASHBOARD
+      ══════════════════════════════ -->
+      <section class="tab" id="tab-dashboard" aria-label="Dashboard">
+
+        <div class="page-hero">
+          <h1 class="page-title">Today</h1>
+          <p class="page-sub" id="dash-date"></p>
+        </div>
+
+        <!-- Ring Chart Card -->
+        <div class="glass-card ring-card">
+          <div class="ring-wrap">
+            <div id="ring-svg" class="ring-svg" role="img" aria-label="Daily progress chart"></div>
+          </div>
+          <div id="cat-legend" class="cat-legend"></div>
+        </div>
+
+        <!-- Energy Flow Card -->
+        <div class="glass-card">
+          <div class="section-head">
+            <span class="section-label">Energy Flow</span>
+            <span class="section-badge" id="energy-avg-badge"></span>
+          </div>
+          <div id="energy-timeline" class="energy-timeline"></div>
+        </div>
+
+        <!-- Activity Log Card -->
+        <div class="glass-card">
+          <div class="section-head">
+            <span class="section-label">Log</span>
+            <span class="section-badge" id="log-count-badge"></span>
+          </div>
+          <div id="activity-list"></div>
+        </div>
+
+        <div style="height:8px"></div>
+      </section>
+
+    </main>
+
+    <!-- ── Bottom Tab Nav ── -->
+    <nav class="tab-nav" aria-label="Main navigation">
+      <button class="nav-btn active" id="nav-log"       onclick="switchTab('log')"       aria-selected="true">
+        <span class="nav-icon" aria-hidden="true">✏️</span>
+        <span class="nav-lbl">Log</span>
+      </button>
+      <button class="nav-btn"        id="nav-dashboard" onclick="switchTab('dashboard')" aria-selected="false">
+        <span class="nav-icon" aria-hidden="true">📊</span>
+        <span class="nav-lbl">Dashboard</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
