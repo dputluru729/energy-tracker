@@ -10,6 +10,22 @@ const STORE_KEY  = "energyflow_v1";
 const CONFIG_KEY = "energyflow_config";
 
 // ──────────────────────────────────────────────────
+//  CONSTANTS
+// ──────────────────────────────────────────────────
+const CATEGORY_CFG = {
+  Work:     { icon: "💼", color: "#818cf8" },
+  Study:    { icon: "📚", color: "#38bdf8" },
+  Personal: { icon: "🧘", color: "#34d399" },
+  Chilling: { icon: "🎮", color: "#fbbf24" },
+};
+
+const ENERGY_EMOJI = { 1: "😫", 2: "😔", 3: "😐", 4: "😊", 5: "🤩" };
+const ENERGY_LABEL = { 1: "Drained", 2: "Tired", 3: "Okay", 4: "Good", 5: "Amazing" };
+const ENERGY_COLOR = { 1: "#f87171", 2: "#fb923c", 3: "#fbbf24", 4: "#4ade80", 5: "#34d399" };
+
+const MAX_MINS = 540; // 9 hours
+
+// ──────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────
 let selCategory = null;
@@ -311,7 +327,9 @@ function switchTab(tab) {
   btn.classList.add("active");
   btn.setAttribute("aria-selected", "true");
 
-  if (tab === "dashboard") renderDashboard(loadTodayEntries());
+  if (tab === "dashboard") {
+    renderDashboard(allEntries.filter(e => e.date === todayStr()));
+  }
 }
 
 // ──────────────────────────────────────────────────
@@ -535,5 +553,4 @@ function buildActivityList(entries) {
 // ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   initUI();
-  renderDashboard(loadTodayEntries());
 });
