@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════
    EnergyFlow · app.js
-   Supabase Backend · Full Sync & Auth
+   Supabase Backend · Zero-Login Sync
    ══════════════════════════════════════════════════ */
 
 // ──────────────────────────────────────────────────
@@ -26,83 +26,14 @@ const ENERGY_LABEL = { 1: "Drained", 2: "Tired", 3: "Okay", 4: "Good", 5: "Amazi
 const ENERGY_COLOR = { 1: "#f87171", 2: "#fb923c", 3: "#fbbf24", 4: "#4ade80", 5: "#34d399" };
 
 const MAX_MINS = 540; // 9 hours
+const USER_KEY = "default_user"; // Simple key for zero-login sync
 
 // ──────────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────────
-let currentUser = null;
 let selCategory = null;
 let selEnergy   = null;
 let allEntries  = [];
-
-// ──────────────────────────────────────────────────
-//  AUTH LOGIC
-// ──────────────────────────────────────────────────
-
-async function checkUser() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    showApp();
-  } else {
-    showAuth();
-  }
-}
-
-function showAuth() {
-  document.getElementById("auth-screen").style.display = "flex";
-  document.getElementById("app-shell").style.display   = "none";
-}
-
-function showApp() {
-  document.getElementById("auth-screen").style.display = "none";
-  document.getElementById("app-shell").style.display   = "flex";
-  initApp();
-}
-
-async function handleAuth(e) {
-  e.preventDefault();
-  const email    = document.getElementById("auth-email").value;
-  const password = document.getElementById("auth-password").value;
-  const isSignUp = document.getElementById("auth-submit-btn").textContent === "Sign Up";
-
-  const btn = document.getElementById("auth-submit-btn");
-  btn.disabled = true;
-  btn.textContent = "Processing...";
-
-  try {
-    const { data, error } = isSignUp 
-      ? await sb.auth.signUp({ email, password })
-      : await sb.auth.signInWithPassword({ email, password });
-
-    if (error) throw error;
-    
-    if (isSignUp && !data.session) {
-      toast("Check your email for confirmation!", "success");
-    } else if (data.session) {
-      currentUser = data.user;
-      showApp();
-    }
-  } catch (err) {
-    toast(err.message, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = isSignUp ? "Sign Up" : "Sign In";
-  }
-}
-
-async function handleLogout() {
-  await sb.auth.signOut();
-  window.location.reload();
-}
-
-function toggleAuthMode() {
-  const isLogin = document.getElementById("auth-submit-btn").textContent === "Sign In";
-  document.getElementById("auth-title").textContent = isLogin ? "Create Account" : "Welcome";
-  document.getElementById("auth-sub").textContent   = isLogin ? "Join EnergyFlow today." : "Sign in to sync your energy flow.";
-  document.getElementById("auth-submit-btn").textContent = isLogin ? "Sign Up" : "Sign In";
-  document.getElementById("auth-toggle-btn").textContent = isLogin ? "Already have an account? Sign In" : "Need an account? Sign Up";
-}
 
 // ──────────────────────────────────────────────────
 //  DATABASE LOGIC
@@ -125,7 +56,7 @@ async function saveToSupabase(entry) {
   const { error } = await sb
     .from('entries')
     .insert([{
-      user_id:    currentUser.id,
+      user_id:    "00000000-0000-0000-0000-000000000000", // Placeholder for zero-login
       category:   entry.category,
       hours:      entry.hours,
       minutes:    entry.minutes,
@@ -191,9 +122,7 @@ async function initApp() {
   // Category pills
   document.querySelectorAll(".pill").forEach(btn => {
     btn.addEventListener("click", () => {
-      if (btn.id === "auth-toggle-btn") return;
       document.querySelectorAll(".pill").forEach(b => {
-        if (b.id === "auth-toggle-btn") return;
         b.classList.remove("active");
         b.setAttribute("aria-pressed", "false");
       });
@@ -224,6 +153,7 @@ async function initApp() {
     }
   });
 
+  // Load Data
   allEntries = await fetchEntries();
   renderDashboard(allEntries.filter(e => e.date === todayStr()));
 }
@@ -267,7 +197,6 @@ async function handleSubmit(e) {
 
 function resetForm() {
   document.querySelectorAll(".pill, .e-btn").forEach(b => {
-    if (b.id === "auth-toggle-btn") return;
     b.classList.remove("active");
     b.setAttribute("aria-pressed", "false");
   });
@@ -404,9 +333,6 @@ function toast(msg, type = "success") {
 //  BOOT
 // ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("auth-form").addEventListener("submit", handleAuth);
-  document.getElementById("auth-toggle-btn").addEventListener("click", toggleAuthMode);
-  document.getElementById("logout-btn").addEventListener("click", handleLogout);
   document.getElementById("log-form").addEventListener("submit", handleSubmit);
-  checkUser();
+  initApp();
 });

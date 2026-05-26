@@ -27,32 +27,7 @@
   <div class="orb orb-2" aria-hidden="true"></div>
   <div class="orb orb-3" aria-hidden="true"></div>
 
-  <!-- Auth Screen -->
-  <div id="auth-screen" class="modal" style="display:none">
-    <div class="glass-card modal-content">
-      <div class="brand" style="justify-content:center; margin-bottom:24px">
-        <span class="brand-bolt" style="font-size:2rem">⚡</span>
-        <span class="brand-name" style="font-size:1.8rem">EnergyFlow</span>
-      </div>
-      <h2 class="modal-title" id="auth-title">Welcome</h2>
-      <p class="modal-sub" id="auth-sub">Sign in to sync your energy flow across devices.</p>
-      
-      <form id="auth-form">
-        <div class="field-label">Email</div>
-        <input type="email" id="auth-email" class="modal-input" placeholder="you@example.com" required />
-        
-        <div class="field-label">Password</div>
-        <input type="password" id="auth-password" class="modal-input" placeholder="••••••••" required />
-
-        <div class="modal-actions" style="flex-direction:column; gap:12px; margin-top:24px">
-          <button type="submit" id="auth-submit-btn" class="save-btn">Sign In</button>
-          <button type="button" id="auth-toggle-btn" class="pill" style="width:100%; border:none">Need an account? Sign Up</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="shell" id="app-shell" style="display:none">
+  <div class="shell" id="app-shell">
 
     <!-- ── Header ── -->
     <header class="header">
@@ -61,7 +36,6 @@
         <span class="brand-name">EnergyFlow</span>
       </div>
       <div class="header-right">
-        <button class="icon-btn" id="logout-btn" aria-label="Logout">Logout 🚪</button>
         <span class="header-date" id="header-date"></span>
       </div>
     </header>
