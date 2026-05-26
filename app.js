@@ -9,7 +9,7 @@
 const SUPABASE_URL = "https://nrhgtcptjjbxtmhfakko.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yaGd0Y3B0ampieHRtaGZha2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDgwODksImV4cCI6MjA5NTMyNDA4OX0.Jwz9T599603Yklu870nJFv3cgP-PDGQsX4rZJLWqxLc";
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ──────────────────────────────────────────────────
 //  CONSTANTS
@@ -40,7 +40,7 @@ let allEntries  = [];
 // ──────────────────────────────────────────────────
 
 async function checkUser() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
     showApp();
@@ -72,8 +72,8 @@ async function handleAuth(e) {
 
   try {
     const { data, error } = isSignUp 
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
+      ? await sb.auth.signUp({ email, password })
+      : await sb.auth.signInWithPassword({ email, password });
 
     if (error) throw error;
     
@@ -92,7 +92,7 @@ async function handleAuth(e) {
 }
 
 async function handleLogout() {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   window.location.reload();
 }
 
@@ -109,7 +109,7 @@ function toggleAuthMode() {
 // ──────────────────────────────────────────────────
 
 async function fetchEntries() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('entries')
     .select('*')
     .order('timestamp', { ascending: false });
@@ -122,7 +122,7 @@ async function fetchEntries() {
 }
 
 async function saveToSupabase(entry) {
-  const { error } = await supabase
+  const { error } = await sb
     .from('entries')
     .insert([{
       user_id:    currentUser.id,
