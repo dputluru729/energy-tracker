@@ -15,17 +15,18 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 //  CONSTANTS
 // ──────────────────────────────────────────────────
 const CATEGORY_CFG = {
-  Work:     { icon: "💼", color: "#818cf8" },
-  Study:    { icon: "📚", color: "#38bdf8" },
-  Personal: { icon: "🧘", color: "#34d399" },
-  Chilling: { icon: "🎮", color: "#fbbf24" },
+  Work:     { icon: "💼", color: "#3b82f6" }, // Electric Blue
+  Study:    { icon: "📚", color: "#06b6d4" }, // Neon Cyan
+  Personal: { icon: "🧘", color: "#10b981" }, // Emerald Green
+  Chilling: { icon: "🎮", color: "#f59e0b" }, // Amber/Orange
 };
 
 const ENERGY_EMOJI = { 1: "😫", 2: "😔", 3: "😐", 4: "😊", 5: "🤩" };
 const ENERGY_LABEL = { 1: "Drained", 2: "Tired", 3: "Okay", 4: "Good", 5: "Amazing" };
 const ENERGY_COLOR = { 1: "#f87171", 2: "#fb923c", 3: "#fbbf24", 4: "#4ade80", 5: "#34d399" };
 
-const MAX_MINS = 540; // 9 hours
+const PRODUCTIVE_MAX = 540; // 9 hours (Work + Study)
+const OVERALL_MAX    = 780; // 13 hours (Total Active Day)
 const USER_KEY = "default_user"; // Simple key for zero-login sync
 
 // ──────────────────────────────────────────────────
@@ -212,66 +213,83 @@ function resetForm() {
 
 function renderDashboard(entries) {
   const totalMins = entries.reduce((s, e) => s + (e.total_mins || 0), 0);
+  const prodMins  = entries.filter(e => e.category === 'Work' || e.category === 'Study')
+                           .reduce((s, e) => s + (e.total_mins || 0), 0);
+                           
   const avgEnergy = entries.length
     ? entries.reduce((s, e) => s + e.energy, 0) / entries.length
     : null;
 
-  buildRingChart(entries, totalMins, avgEnergy);
+  buildDoubleRing(entries, prodMins, totalMins, avgEnergy);
   buildCatLegend(entries, totalMins);
   buildEnergyTimeline(entries, avgEnergy);
   buildActivityList(entries);
 }
 
-function buildRingChart(entries, totalMins, avgEnergy) {
+function buildDoubleRing(entries, prodMins, totalMins, avgEnergy) {
   const cx = 110, cy = 110;
-  const OR = 90, OW = 13;
-  const IR = 68, IW = 10;
-  const progress   = Math.min(totalMins / MAX_MINS, 1);
-  const ocirc      = 2 * Math.PI * OR;
-  const initOffset = ocirc.toFixed(3);
-  const targOffset = (ocirc * (1 - progress)).toFixed(3);
+  
+  // Outer Ring (Overall 13h)
+  const OR_R = 92, OR_W = 12;
+  const or_circ = 2 * Math.PI * OR_R;
+  const or_prog = Math.min(totalMins / OVERALL_MAX, 1);
+  const or_offset = or_circ * (1 - or_prog);
 
-  const catTotals = {};
-  entries.forEach(e => {
-    catTotals[e.category] = (catTotals[e.category] || 0) + (e.total_mins || 0);
-  });
+  // Inner Ring (Productive 9h)
+  const IR_R = 72, IR_W = 12;
+  const ir_circ = 2 * Math.PI * IR_R;
+  const ir_prog = Math.min(prodMins / PRODUCTIVE_MAX, 1);
+  const ir_offset = ir_circ * (1 - ir_prog);
 
-  const GAP = 5;
+  // Category arcs on Outer Ring
   let angle = 0;
-  const catArcs = Object.entries(catTotals)
-    .sort(([, a], [, b]) => b - a)
-    .map(([cat, mins]) => {
-      const cfg  = CATEGORY_CFG[cat] || { color: "#6366f1" };
-      const span = (mins / MAX_MINS) * 360;
-      if (span <= GAP * 2) { angle += span; return ""; }
-      const p1   = polar(cx, cy, IR, angle + GAP / 2);
-      const p2   = polar(cx, cy, IR, angle + span - GAP / 2);
-      const large = (span - GAP) > 180 ? 1 : 0;
-      const d    = `M${p1.x},${p1.y} A${IR},${IR} 0 ${large} 1 ${p2.x},${p2.y}`;
-      angle     += span;
-      return `<path d="${d}" fill="none" stroke="${cfg.color}" stroke-width="${IW}" stroke-linecap="round" opacity="0.9"/>`;
-    }).join("\n");
+  const GAP = 3;
+  const catArcs = entries.map(e => {
+    const cfg = CATEGORY_CFG[e.category] || { color: "#6366f1" };
+    const span = (e.total_mins / OVERALL_MAX) * 360;
+    if (span <= 0) return "";
+    
+    const p1 = polar(cx, cy, OR_R, angle + GAP / 2);
+    const p2 = polar(cx, cy, OR_R, angle + span - GAP / 2);
+    const large = (span - GAP) > 180 ? 1 : 0;
+    const d = `M${p1.x},${p1.y} A${OR_R},${OR_R} 0 ${large} 1 ${p2.x},${p2.y}`;
+    angle += span;
+    return `<path d="${d}" fill="none" stroke="${cfg.color}" stroke-width="${OR_W}" stroke-linecap="round" />`;
+  }).join("\n");
 
-  const timeLabel  = totalMins > 0 ? formatDur(totalMins) : "—";
-  const energyLine = avgEnergy !== null
-    ? `<text x="${cx}" y="${cy + 30}" text-anchor="middle" fill="rgba(100,116,139,0.85)" font-size="12" font-weight="500">${ENERGY_EMOJI[Math.round(avgEnergy)]} ${avgEnergy.toFixed(1)} avg</text>`
-    : "";
+  // Inner ring arcs (Productive only)
+  let prodAngle = 0;
+  const prodArcs = entries.filter(e => e.category === 'Work' || e.category === 'Study').map(e => {
+    const cfg = CATEGORY_CFG[e.category];
+    const span = (e.total_mins / PRODUCTIVE_MAX) * 360;
+    const p1 = polar(cx, cy, IR_R, prodAngle + GAP / 2);
+    const p2 = polar(cx, cy, IR_R, prodAngle + span - GAP / 2);
+    const large = (span - GAP) > 180 ? 1 : 0;
+    const d = `M${p1.x},${p1.y} A${IR_R},${IR_R} 0 ${large} 1 ${p2.x},${p2.y}`;
+    prodAngle += span;
+    return `<path d="${d}" fill="none" stroke="${cfg.color}" stroke-width="${IR_W}" stroke-linecap="round" />`;
+  }).join("\n");
+
+  const timeLabel = formatDur(totalMins);
+  const prodLabel = formatDur(prodMins);
+  const energyText = avgEnergy ? `${ENERGY_EMOJI[Math.round(avgEnergy)]} ${avgEnergy.toFixed(1)}` : "—";
 
   document.getElementById("ring-svg").innerHTML = `
     <svg viewBox="0 0 220 220">
-      <circle cx="${cx}" cy="${cy}" r="${OR}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${OW}"/>
-      <circle cx="${cx}" cy="${cy}" r="${IR}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="${IW}"/>
-      <circle id="prog-ring" cx="${cx}" cy="${cy}" r="${OR}" fill="none" stroke="#6366f1" stroke-width="${OW}" stroke-dasharray="${ocirc}" stroke-dashoffset="${initOffset}" stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})" style="transition: stroke-dashoffset 1s ease"/>
+      <!-- Backgrounds -->
+      <circle cx="${cx}" cy="${cy}" r="${OR_R}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${OR_W}"/>
+      <circle cx="${cx}" cy="${cy}" r="${IR_R}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${IR_W}"/>
+      
+      <!-- Arcs -->
       ${catArcs}
-      <text x="${cx}" y="${cy - 8}" text-anchor="middle" fill="#f1f5f9" font-size="22" font-weight="800">${timeLabel}</text>
-      <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="rgba(100,116,139,0.8)" font-size="10" font-weight="500">of 9 hours</text>
-      ${energyLine}
-    </svg>`;
+      ${prodArcs}
 
-  setTimeout(() => {
-    const ring = document.getElementById("prog-ring");
-    if (ring) ring.style.strokeDashoffset = targOffset;
-  }, 10);
+      <!-- Center Text -->
+      <text x="${cx}" y="${cy - 12}" text-anchor="middle" fill="#fff" font-size="20" font-weight="800">${timeLabel}</text>
+      <text x="${cx}" y="${cy + 8}" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="10" font-weight="600">PROD: ${prodLabel}</text>
+      <text x="${cx}" y="${cy + 24}" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="12" font-weight="500">${energyText}</text>
+    </svg>
+  `;
 }
 
 function buildCatLegend(entries, totalMins) {

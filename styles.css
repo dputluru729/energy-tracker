@@ -65,7 +65,6 @@ body {
   color: var(--fg);
   min-height: 100dvh;
   min-height: -webkit-fill-available;
-  overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Subtle noise via background */
@@ -296,8 +295,7 @@ button, input { font-family: inherit; }
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 80px); /* Increased padding for better scroll */
 }
 
 /* ── Tab Panels ── */
