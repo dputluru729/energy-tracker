@@ -56,7 +56,6 @@ async function saveToSupabase(entry) {
   const { error } = await sb
     .from('entries')
     .insert([{
-      user_id:    "00000000-0000-0000-0000-000000000000", // Placeholder for zero-login
       category:   entry.category,
       hours:      entry.hours,
       minutes:    entry.minutes,
