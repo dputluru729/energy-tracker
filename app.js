@@ -50,9 +50,12 @@ async function fetchFromGist() {
 
   try {
     const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-      headers: { 'Authorization': `token ${token}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
     });
-    if (!res.ok) throw new Error("Gist fetch failed");
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     const data = await res.json();
     const content = data.files["energyflow_data.json"]?.content;
     return content ? JSON.parse(content) : [];
@@ -71,6 +74,7 @@ async function syncToGist(entries) {
 
   const body = {
     description: "EnergyFlow Data",
+    public: false,
     files: {
       "energyflow_data.json": { content: JSON.stringify(entries, null, 2) }
     }
@@ -88,20 +92,23 @@ async function syncToGist(entries) {
     const res = await fetch(url, {
       method,
       headers: { 
-        'Authorization': `token ${token}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
       },
       body: JSON.stringify(body)
     });
 
-    if (!res.ok) throw new Error("Gist sync failed");
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || `Sync failed: ${res.status}`);
+    }
     
     if (!gistId) {
       const data = await res.json();
       saveConfig({ ...getConfig(), gistId: data.id });
     }
     
-    // Also update local as backup
     saveLocal(entries);
   } catch (err) {
     console.error("Cloud sync error:", err);
@@ -156,7 +163,11 @@ async function saveSetup() {
 //  UTILITIES
 // ──────────────────────────────────────────────────
 function todayStr() {
-  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function niceDate() {
@@ -279,6 +290,8 @@ async function handleSubmit(e) {
     await syncToGist(allEntries);
     toast("✅ Saved to Cloud", "success");
     resetForm();
+    // Re-render dashboard if we are on it
+    renderDashboard(allEntries.filter(e => e.date === todayStr()));
   } catch (err) {
     console.error(err);
     toast("❌ Sync failed — saved locally", "error");
