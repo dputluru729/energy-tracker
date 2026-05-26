@@ -12,13 +12,13 @@
 
   <title>EnergyFlow</title>
 
+  <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -27,30 +27,32 @@
   <div class="orb orb-2" aria-hidden="true"></div>
   <div class="orb orb-3" aria-hidden="true"></div>
 
-  <!-- Setup / Config Modal -->
-  <div id="setup-modal" class="modal" style="display:none">
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="modal" style="display:none">
     <div class="glass-card modal-content">
-      <h2 class="modal-title">Cloud Setup</h2>
-      <p class="modal-sub">Sync your data across devices using a private GitHub Gist.</p>
-      
-      <div class="field-label">GitHub Personal Access Token</div>
-      <input type="password" id="gh-token" class="modal-input" placeholder="ghp_xxxxxxxxxxxx" />
-      <a href="https://github.com/settings/tokens?type=beta" target="_blank" class="modal-hint">Create a token with 'Gists' access ↗</a>
-
-      <div class="field-sep"></div>
-
-      <div class="field-label">Gist ID</div>
-      <input type="text" id="gh-gist-id" class="modal-input" placeholder="Paste your Gist ID here" />
-      <p class="modal-hint">Leave blank to create a new one on first save.</p>
-
-      <div class="modal-actions">
-        <button type="button" class="pill" onclick="closeSetup()">Cancel</button>
-        <button type="button" class="pill active" onclick="saveSetup()" style="background:var(--personal); border-color:var(--personal); color:#fff">Save Config</button>
+      <div class="brand" style="justify-content:center; margin-bottom:24px">
+        <span class="brand-bolt" style="font-size:2rem">⚡</span>
+        <span class="brand-name" style="font-size:1.8rem">EnergyFlow</span>
       </div>
+      <h2 class="modal-title" id="auth-title">Welcome</h2>
+      <p class="modal-sub" id="auth-sub">Sign in to sync your energy flow across devices.</p>
+      
+      <form id="auth-form">
+        <div class="field-label">Email</div>
+        <input type="email" id="auth-email" class="modal-input" placeholder="you@example.com" required />
+        
+        <div class="field-label">Password</div>
+        <input type="password" id="auth-password" class="modal-input" placeholder="••••••••" required />
+
+        <div class="modal-actions" style="flex-direction:column; gap:12px; margin-top:24px">
+          <button type="submit" id="auth-submit-btn" class="save-btn">Sign In</button>
+          <button type="button" id="auth-toggle-btn" class="pill" style="width:100%; border:none">Need an account? Sign Up</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <div class="shell">
+  <div class="shell" id="app-shell" style="display:none">
 
     <!-- ── Header ── -->
     <header class="header">
@@ -59,7 +61,7 @@
         <span class="brand-name">EnergyFlow</span>
       </div>
       <div class="header-right">
-        <button class="icon-btn" onclick="openSetup()" aria-label="Settings">⚙️</button>
+        <button class="icon-btn" id="logout-btn" aria-label="Logout">Logout 🚪</button>
         <span class="header-date" id="header-date"></span>
       </div>
     </header>
